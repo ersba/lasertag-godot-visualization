@@ -24,8 +24,8 @@ public class Map(List<List<Map.Field>> data)
             Ditch: new(new(0, 0), 1),
             Water: new(new(0, 0), 2),
             ExplosiveBarrel: new(new(5, 2)),
-            FlagStand1: new(new(1, 8)),
-            FlagStand2: new(new(3, 8))
+            FlagStandRed: new(new(1, 8)),
+            FlagStandYellow: new(new(3, 8))
         );
     }
 
@@ -45,8 +45,8 @@ public class Map(List<List<Map.Field>> data)
             Ditch: new(new(4, 2), 1),
             Water: new(new(0, 3)),
             ExplosiveBarrel: new(new(3, 2)),
-            FlagStand1: new(new(1, 8)),
-            FlagStand2: new(new(3, 8))
+            FlagStandRed: new(new(1, 8)),
+            FlagStandYellow: new(new(3, 8))
         );
     }
 
@@ -66,8 +66,8 @@ public class Map(List<List<Map.Field>> data)
             Ditch: new(new(26, 17)),
             Water: new(new(25, 18)),
             ExplosiveBarrel: new(new(25, 16)),
-            FlagStand1: new(new(26, 6)),
-            FlagStand2: new(new(26, 5))
+            FlagStandRed: new(new(26, 3)),
+            FlagStandYellow: new(new(26, 5))
         );
     }
 
@@ -84,8 +84,8 @@ public class Map(List<List<Map.Field>> data)
         TileMapCell Ditch,
         TileMapCell Water,
         TileMapCell ExplosiveBarrel,
-        TileMapCell FlagStand1,
-        TileMapCell FlagStand2);
+        TileMapCell FlagStandRed,
+        TileMapCell FlagStandYellow);
 
     private record TileMapCell(Vector2I AtlasCoords, int AlternativeTile = 0);
 
@@ -97,8 +97,8 @@ public class Map(List<List<Map.Field>> data)
         Ditch,
         Water,
         ExplosiveBarrel,
-        FlagStand1,
-        FlagStand2,
+        FlagStandRed,
+        FlagStandYellow,
     }
 
     private TileSetCoordinates currentTileSetCoords = GetMinipackTiles();
@@ -106,44 +106,30 @@ public class Map(List<List<Map.Field>> data)
     public static Map ReadInMap()
     {
         var mapPath = GetMapFilename();
-        var mapData = new List<List<Field>>();
-        string[] lines = File.ReadAllLines(mapPath);
-        foreach (string line in lines)
-        {
-            var row = line.Split(';').Select(field => field switch
-            {
-                "0" => Field.Floor,
-                "1" => Field.Wall,
-                "2" => Field.Hill,
-                "3" => Field.Ditch,
-                "4" => Field.Water,
-                "5" => Field.ExplosiveBarrel,
-                "7" => Field.FlagStand1,
-                "8" => Field.FlagStand2,
-                _ => throw new ArgumentException("Encountered an unknown map field."),
-            }).ToList();
-            mapData.Add(row);
-        }
+        var lines = File.ReadAllLines(mapPath);
+        var mapData = lines.Select(line => line.Split(';')
+                .Select(field => field switch
+                {
+                    "0" => Field.Floor,
+                    "1" => Field.Wall,
+                    "2" => Field.Hill,
+                    "3" => Field.Ditch,
+                    "4" => Field.Water,
+                    "5" => Field.ExplosiveBarrel,
+                    "7" => Field.FlagStandRed,
+                    "8" => Field.FlagStandYellow,
+                    _ => throw new ArgumentException("Encountered an unknown map field."),
+                })
+                .ToList())
+            .ToList();
 
         return new Map(mapData);
     }
 
     private static string GetMapFilename()
     {
-        string configFilename = "config.json";
-        
-        string cwd = Path.GetFileName(Directory.GetCurrentDirectory());
-        GD.Print("CWD: ", cwd);
-        
-        string pathToLasertagBox = cwd switch
-        {
-            "LaserTagBox" => ".",
-            "model-mars-laser-tag-game" => Path.Combine(".", "LaserTagBox"),
-            "Visualization" => Path.Combine("..", "LaserTagBox"),
-            _ => throw new NotImplementedException($"Unknown working directory: {cwd}")
-        };
-
-        string pathToConfigFile = Path.Combine(pathToLasertagBox, configFilename);
+        var rootDir = FindRootDirectory(new DirectoryInfo(Directory.GetCurrentDirectory()));
+        var pathToConfigFile = Path.Combine(rootDir.FullName, "LaserTagBox", "config.json");
 
         if (!File.Exists(pathToConfigFile))
         {
@@ -152,14 +138,21 @@ public class Map(List<List<Map.Field>> data)
 
         var configJson = File.ReadAllText(pathToConfigFile);
         var config = JsonSerializer.Deserialize<LaserTagConfig>(configJson);
+        var playerBodyLayer = config?.Layers.Find(l => l.Name == "PlayerBodyLayer") ??
+                              throw new Exception("PlayerBodyLayer not found in config.");
+        return Path.Combine(rootDir.FullName, "LaserTagBox", playerBodyLayer.File);
+    }
 
-        var playerBodyLayer = config.Layers.Find(l => l.Name == "PlayerBodyLayer");
-        if (playerBodyLayer == null)
+    private static DirectoryInfo FindRootDirectory(DirectoryInfo currentDir)
+    {
+        if (Directory.Exists(Path.Combine(currentDir.FullName, "Visualization")) &&
+                Directory.Exists(Path.Combine(currentDir.FullName, "LaserTagBox")))
         {
-            throw new Exception("PlayerBodyLayer not found in config.");
+            return currentDir;
         }
-        
-        return Path.Combine(pathToLasertagBox, playerBodyLayer.File);
+
+        return FindRootDirectory(currentDir.Parent ??
+                                 throw new InvalidOperationException("No Parent of directory found."));
     }
 
 
@@ -211,8 +204,8 @@ public class Map(List<List<Map.Field>> data)
                     Field.Ditch => currentTileSetCoords.Ditch,
                     Field.Water => currentTileSetCoords.Water,
                     Field.ExplosiveBarrel => currentTileSetCoords.ExplosiveBarrel,
-                    Field.FlagStand1 => currentTileSetCoords.FlagStand1,
-                    Field.FlagStand2 => currentTileSetCoords.FlagStand2,
+                    Field.FlagStandRed => currentTileSetCoords.FlagStandRed,
+                    Field.FlagStandYellow => currentTileSetCoords.FlagStandYellow,
                     _ => throw new NotImplementedException(),
                 };
                 tileMapLayer.SetCell(new Vector2I(x, y), currentTileSetCoords.SourceId, tileSetField.AtlasCoords, tileSetField.AlternativeTile);
