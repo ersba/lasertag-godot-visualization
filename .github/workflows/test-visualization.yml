@@ -20,11 +20,11 @@ jobs:
       
       - name: Build Backend
         run: |
-          dotnet build ./lasertag-godot-visualization/LaserTagBox/LaserTagBox.csproj
+          dotnet build ./LaserTagBox/LaserTagBox.csproj
 
       - name: Run Backend in background
         run: |
-          dotnet run --project ./lasertag-godot-visualization/LaserTagBox/LaserTagBox.csproj &
+          dotnet run --project ./LaserTagBox/LaserTagBox.csproj &
           echo $! > backend_pid.txt
 
       - name: Extract Godot App
