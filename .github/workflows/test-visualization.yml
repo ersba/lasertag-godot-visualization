@@ -24,7 +24,7 @@ jobs:
 
       - name: Run Backend in background
         run: |
-          cd LaserTagBox && dotnet run &
+          cd LaserTagBox && dotnet run > backend.log 2>&1 &
           echo $! > backend_pid.txt
 
       - name: Extract Godot App
@@ -42,6 +42,12 @@ jobs:
             echo "Visualization exited with error code $exit_code"
             exit 1
           fi
+
+      - name: Print Backend Logs
+        if: always()
+        run: |
+          echo "--- Backend Output ---"
+          cat LaserTagBox/backend.log || echo "No backend log found"
 
       - name: Cleanup
         if: always()
