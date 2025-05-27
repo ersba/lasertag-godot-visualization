@@ -1,0 +1,49 @@
+name: Test Visualization on macOS
+
+on:
+  push:
+    branches: [ visualization ]
+  pull_request:
+    branches: [ visualization ]
+
+jobs:
+  test-visualization:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x' # oder was dein Projekt benötigt
+
+      - name: Build Backend
+        run: |
+          dotnet build ./src/ModelMarsLaserTagBackend/ModelMarsLaserTagBackend.csproj
+
+      - name: Run Backend in background
+        run: |
+          dotnet run --project ./src/ModelMarsLaserTagBackend/ModelMarsLaserTagBackend.csproj &
+          echo $! > backend_pid.txt
+
+      - name: Extract Godot App
+        run: |
+          tar -xf visualization/visualization_macOS.app.tar.xz
+
+      - name: Give execute permissions
+        run: |
+          chmod +x visualization_macOS.app/Contents/MacOS/visualization_macOS
+
+      - name: Run Godot Visualization (expecting it to fail if there is an exception)
+        run: |
+          ./visualization_macOS.app/Contents/MacOS/visualization_macOS || exit_code=$?
+          if [ "$exit_code" != "" ] && [ "$exit_code" -ne 0 ]; then
+            echo "Visualization exited with error code $exit_code"
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          kill $(cat backend_pid.txt) || true
