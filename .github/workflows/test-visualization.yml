@@ -17,14 +17,14 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0.x' # oder was dein Projekt benötigt
-
+      
       - name: Build Backend
         run: |
-          dotnet build ./src/ModelMarsLaserTagBackend/ModelMarsLaserTagBackend.csproj
+          dotnet build ./lasertag-godot-visualization/LaserTagBox/LaserTagBox.csproj
 
       - name: Run Backend in background
         run: |
-          dotnet run --project ./src/ModelMarsLaserTagBackend/ModelMarsLaserTagBackend.csproj &
+          dotnet run --project ./lasertag-godot-visualization/LaserTagBox/LaserTagBox.csproj &
           echo $! > backend_pid.txt
 
       - name: Extract Godot App
